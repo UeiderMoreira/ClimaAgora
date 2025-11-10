@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "ClimaAgora",
+    "slug": "climaagora",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "icon": "./assets/icon.png",
+    "plugins": [
+      [
+        "expo-location",
+        {}
+      ],
+      "expo-asset"
+    ]
+  }
+}

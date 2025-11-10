@@ -1,0 +1,1 @@
+export const WEATHER_API_KEY = "COLOQUE_SUA_CHAVE_AQUI";
