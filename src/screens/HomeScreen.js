@@ -1,3 +1,196 @@
+import React from "react";
+import { View, Text, Image, StyleSheet, ScrollView } from "react-native";
+import { useLocation } from "../hooks/useLocation";
+import { useWeather } from "../hooks/useWeather";
+import BackgroundWrapper from "../components/BackgroundWrapper";
+import { getWeatherTip } from "../utils/weatherTips";
+import { mapConditionToGroup } from "../utils/weatherConditions";
+
+export default function HomeScreen() {
+  const { coords, loading: loadingLocation, error: locationError } = useLocation();
+  const { data, loading: loadingWeather, error: weatherError } = useWeather(coords);
+
+  if (loadingLocation || loadingWeather) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.loading}>Carregando...</Text>
+      </View>
+    );
+  }
+
+  if (locationError || weatherError || !data) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.error}>Ops! Não foi possível obter a previsão do tempo.</Text>
+      </View>
+    );
+  }
+
+  // Dados principais da API
+  const { location, current, forecast } = data;
+  const conditionText = current?.condition?.text || "Tempo indefinido";
+  const iconUrl = "https:" + current?.condition?.icon;
+  const isDay = current?.is_day === 1;
+  const group = mapConditionToGroup(conditionText);
+  const textColor = isDay ? "#222" : "#fff";
+  const tip = getWeatherTip(conditionText, isDay);
+
+  return (
+    <BackgroundWrapper group={group} isDay={isDay}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Local e condição */}
+        <Text style={[styles.city, { color: textColor }]}>{location?.name}</Text>
+        <Text style={[styles.condition, { color: textColor }]}>{conditionText}</Text>
+
+        {/* Temperatura principal */}
+        <View style={styles.tempBox}>
+          <Image source={{ uri: iconUrl }} style={styles.icon} />
+          <Text style={[styles.temp, { color: textColor }]}>
+            {Math.round(current?.temp_c)}°C
+          </Text>
+        </View>
+
+        {/* Cards de informações rápidas */}
+        <View style={styles.infoContainer}>
+          <View style={styles.card}>
+            <Text style={[styles.cardLabel, { color: textColor }]}>🌡️ Sensação</Text>
+            <Text style={[styles.cardValue, { color: textColor }]}>{Math.round(current?.feelslike_c)}°C</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={[styles.cardLabel, { color: textColor }]}>💨 Vento</Text>
+            <Text style={[styles.cardValue, { color: textColor }]}>{current?.wind_kph} km/h</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={[styles.cardLabel, { color: textColor }]}>💧 Umidade</Text>
+            <Text style={[styles.cardValue, { color: textColor }]}>{current?.humidity}%</Text>
+          </View>
+        </View>
+
+        {/* Previsão por hora */}
+        <View style={styles.hourlyContainer}>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>Previsão para hoje</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: 10 }}
+          >
+            {forecast?.forecastday?.[0]?.hour?.map((hour, index) => {
+              const time = hour.time.split(" ")[1].slice(0, 5);
+              const temp = Math.round(hour.temp_c);
+              const icon = "https:" + hour.condition.icon;
+              const isHourDay = hour.is_day === 1;
+              const bgColor = isHourDay
+                ? "rgba(255,255,255,0.6)"
+                : "rgba(0,0,0,0.4)";
+              const textColorHour = isHourDay ? "#000" : "#fff";
+
+              return (
+                <View key={index} style={[styles.hourCard, { backgroundColor: bgColor }]}>
+                  <Text style={[styles.hourTime, { color: textColorHour }]}>{time}</Text>
+                  <Image source={{ uri: icon }} style={styles.hourIcon} />
+                  <Text style={[styles.hourTemp, { color: textColorHour }]}>{temp}°C</Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Dica do dia */}
+        <View style={styles.tipBox}>
+          <Text style={[styles.tipText, { color: textColor }]}>{tip}</Text>
+        </View>
+      </ScrollView>
+    </BackgroundWrapper>
+  );
+}
+
+// 🌤️ Estilos
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#222",
+  },
+  loading: { color: "#fff", fontSize: 18 },
+  error: { color: "#fff", fontSize: 16, textAlign: "center", padding: 20 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  city: { fontSize: 32, fontWeight: "bold", textAlign: "center" },
+  condition: { fontSize: 18, marginBottom: 10, textAlign: "center" },
+  tempBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  icon: { width: 80, height: 80, marginRight: 10 },
+  temp: { fontSize: 64, fontWeight: "bold" },
+
+  // Cards rápidos
+  infoContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    marginVertical: 10,
+    flexWrap: "wrap",
+  },
+  card: {
+    backgroundColor: "rgba(255,255,255,0.3)",
+    borderRadius: 16,
+    padding: 12,
+    margin: 6,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  cardLabel: { fontSize: 14, marginBottom: 4 },
+  cardValue: { fontSize: 16, fontWeight: "bold" },
+
+  // Previsão horária
+  hourlyContainer: {
+    marginTop: 25,
+    width: "100%",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 6,
+  },
+  hourCard: {
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 10,
+    marginRight: 8,
+    width: 80,
+  },
+  hourTime: { fontSize: 14, marginBottom: 4 },
+  hourIcon: { width: 40, height: 40, marginBottom: 4 },
+  hourTemp: { fontSize: 16, fontWeight: "bold" },
+
+  // Dica
+  tipBox: {
+    marginTop: 30,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 12,
+    padding: 15,
+    width: "90%",
+  },
+  tipText: {
+    fontSize: 16,
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+});
+
+/*
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { BlurView } from 'expo-blur';
 import BackgroundWrapper from '../components/BackgroundWrapper';
@@ -93,6 +286,7 @@ const styles = StyleSheet.create({
   },
   cardItem: { fontSize: 16, fontWeight: '500' },
 });
+*/
 
 /*
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
